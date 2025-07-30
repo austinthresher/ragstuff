@@ -1,12 +1,16 @@
 from langchain_core.documents import Document
-from langchain_community.document_loaders import AsyncHtmlLoader, AsyncChromiumLoader
+from langchain_community.document_loaders import AsyncHtmlLoader
 from langchain_docling import DoclingLoader
 from langchain_docling.loader import ExportType
 
 from readability import Readability
 from html_to_markdown import convert_to_markdown
 
-from constants import BLOCKED_STRINGS
+# Don't return websites that contain these strings because they
+# won't have any actual content
+BLOCKED_STRINGS = [
+    "website is running Anubis",
+]
 
 from docling.chunking import HybridChunker
 async def docling_load(path_or_url: str) -> Document:
@@ -39,18 +43,11 @@ def cleanup_html_document(
 
 
 async def load_urls(urls: list[str], playwright: bool = False) -> list[Document]:
-    loader = AsyncChromiumLoader if playwright else AsyncHtmlLoader
-    # FIXME: There has to be a better way to handle one exception out of the
-    # list of URLs
-    try:
-        docs = await loader(urls).aload()
-    except:
-        docs = []
-        for u in urls:
-            try:
-                docs.extend(await loader([u]).aload())
-            except:
-                continue
+    docs = await AsyncHtmlLoader(
+        urls,
+        ignore_load_errors=True,
+        requests_per_second=5,
+    ).aload()
     results = []
     for doc in docs:
         if result := cleanup_html_document(doc):

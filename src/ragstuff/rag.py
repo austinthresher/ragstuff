@@ -6,6 +6,7 @@ from pathlib import Path
 import itertools
 
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_chroma import Chroma
 from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
@@ -33,31 +34,26 @@ from scrape import load_urls, docling_load
 class RAGBackend:
     def __init__(
         self,
-        name: str,
-        initial_results: int = 10,
-        top_n: int = 5,
-        persist: bool = False,
+        name: str = "chroma",
+        n_results: int = 5,
+        persist_directory: bool = False,
+        embeddings_model: Embeddings = None,
     ):
-        # Only needed if I bring back ParentDocumentRetriever
-        # self.store = (
-        #     LocalFileStore(root_path=f"{name}.store")
-        #     if persist
-        #     else InMemoryByteStore()
-        # )
-
-        self.embedding_model = HuggingFaceEmbeddings(
-            model_name="all-mpnet-base-v2", model_kwargs={"device": "cuda"}
+        self.embedding_model = embeddings_model or HuggingFaceEmbeddings(
+            model_kwargs={"device": "cuda"}
         )
         self.db = Chroma(
-            f"chroma_{name}",
+            namek,
             embedding_function=self.embedding_model,
-            persist_directory=f"{name}.db" if persist else None,
+            persist_directory=persist_directory,
+        )
+        self.db_retriever = self.db.as_retriever(
+            search_type="mmr",
+            search_kwargs={"k": n_results * 2, "fetch_k": n_results * 4},
         )
         self.retriever = ContextualCompressionRetriever(
-            base_retriever=self.db.as_retriever(search_kwargs={"k": initial_results}),
-            base_compressor=FlashrankRerank(
-                top_n=top_n, model="ms-marco-MiniLM-L-12-v2"
-            ),
+            base_retriever=self.db_retriever,
+            base_compressor=FlashrankRerank(top_n=n_results),
         )
 
     def source_exists(self, url: str) -> bool:

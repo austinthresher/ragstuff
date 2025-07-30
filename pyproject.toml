@@ -1,13 +1,12 @@
 [project]
-name = "planner"
+name = "ragstuff"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "accelerate>=1.8.1",
     "aiohttp>=3.12.13",
-    "cairosvg>=2.8.2",
     "chromadb>=1.0.15",
     "flashrank>=0.2.10",
     "html-to-markdown>=1.8.0",
@@ -17,20 +16,16 @@ dependencies = [
     "langchain-huggingface>=0.3.0",
     "langchain-mcp-adapters>=0.1.9",
     "langchain-openai>=0.3.27",
-    "langchain-pymupdf4llm>=0.4.1",
     "langchain-text-splitters>=0.3.8",
     "langchain-unstructured>=0.1.6",
-    "langchain[google-genai]>=0.3.26",
     "langgraph>=0.5.0",
     "llmlingua>=0.2.2",
     "numpy>=2.3.1",
     "openai>=1.90.0",
-    "openai-agents>=0.0.19",
     "pillow>=11.2.1",
     "playwright>=1.53.0",
     "pydantic>=2.11.7",
     "pypdf>=5.8.0",
-    "python-dotenv>=1.1.0",
     "readability-python>=0.5.0",
     "rich>=14.0.0",
     "sentence-transformers>=5.0.0",

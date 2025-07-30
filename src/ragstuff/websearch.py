@@ -5,9 +5,9 @@
 
 from pydantic import BaseModel
 from langchain_community.utilities import SearxSearchWrapper
+import os
 
-from constants import WEB_SEARCH_URL
-
+WEB_SEARCH_URL = os.getenv("WEB_SEARCH_URL") or "http://localhost:16000"
 _search_backend = SearxSearchWrapper(searx_host=WEB_SEARCH_URL)
 
 class SearchResult(BaseModel):
