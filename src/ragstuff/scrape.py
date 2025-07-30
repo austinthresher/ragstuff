@@ -12,11 +12,9 @@ BLOCKED_STRINGS = [
     "website is running Anubis",
 ]
 
-from docling.chunking import HybridChunker
 async def docling_load(path_or_url: str) -> Document:
     loader = DoclingLoader(
         file_path=path_or_url,
-        chunker=HybridChunker(tokenizer="sentence-transformers/all-MiniLM-L6-v2"),
         export_type=ExportType.DOC_CHUNKS,
     )
     result = await loader.aload()
