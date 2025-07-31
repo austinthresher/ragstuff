@@ -10,15 +10,8 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_chroma import Chroma
 from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
-from langchain.retrievers.ensemble import EnsembleRetriever
-from langchain.retrievers.merger_retriever import MergerRetriever
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.retrievers import ParentDocumentRetriever, MultiVectorRetriever
-from langchain_text_splitters.base import TextSplitter
-from langchain_text_splitters.markdown import MarkdownTextSplitter
+from langchain.retrievers import MergerRetriever
 from langchain_text_splitters.character import RecursiveCharacterTextSplitter
-from langchain.storage import LocalFileStore, InMemoryByteStore
-from langchain_community.document_compressors import FlashrankRerank
 from langchain.tools.retriever import create_retriever_tool
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_unstructured import UnstructuredLoader
@@ -26,11 +19,11 @@ from langchain_docling import DoclingLoader
 from langchain_docling.loader import ExportType
 from langchain_community.vectorstores.utils import filter_complex_metadata
 from langgraph.prebuilt import create_react_agent
-from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.prompts import PromptTemplate
 
 from ragstuff.websearch import search_web
 from ragstuff.scrape import load_urls, docling_load
+import ragstuff.default_models as default_models
 
 DEFAULT_RAG_PROMPT = (
     "You are a researcher who uses semantic search to gather information.\n"
@@ -53,13 +46,14 @@ class RAGBackend:
         embeddings_model: Embeddings = None,
     ):
         self.n_results = n_results
-        self.embedding_model = embeddings_model or HuggingFaceEmbeddings(
-            model_kwargs={"device": "cuda"}
-        )
+        self.embedding_model = embeddings_model or default_models.embeddings()
         self.db = Chroma(
             name,
             embedding_function=self.embedding_model,
             persist_directory=persist_directory,
+        )
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000, chunk_overlap=100
         )
         self.db_retriever = self.db.as_retriever(
             search_type="mmr",
@@ -69,11 +63,11 @@ class RAGBackend:
                 "lambda_mult": 0.25,
             },
         )
-        self.retriever = ContextualCompressionRetriever(
-            base_retriever=self.db_retriever,
-            base_compressor=FlashrankRerank(top_n=n_results),
-        )
-        self.splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        self.retriever = self.db_retriever
+        # self.retriever = ContextualCompressionRetriever(
+        #     base_retriever=self.db_retriever,
+        #     base_compressor=FlashrankRerank(top_n=n_results),
+        # )
 
     def source_exists(self, url: str) -> bool:
         results = self.db.get(limit=1, where={"source": {"$eq": url}})
@@ -156,8 +150,12 @@ class RAGBackend:
         results = await asyncio.gather(self.add_files(paths), self.add_files(urls))
         return results
 
-    async def query(self, search_query: str) -> list[Document]:
+    async def aquery(self, search_query: str) -> list[Document]:
         result = await self.retriever.ainvoke(search_query)
+        return result
+
+    def query(self, search_query: str) -> list[Document]:
+        result = self.retriever.invoke(search_query)
         return result
 
     def get_tool(self, tool_name: str, tool_description: str):

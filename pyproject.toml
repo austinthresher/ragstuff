@@ -8,7 +8,6 @@ dependencies = [
     "accelerate>=1.8.1",
     "aiohttp>=3.12.13",
     "chromadb>=1.0.15",
-    "flashrank>=0.2.10",
     "html-to-markdown>=1.8.0",
     "langchain-chroma>=0.2.4",
     "langchain-community>=0.3.26",
@@ -19,12 +18,10 @@ dependencies = [
     "langchain-text-splitters>=0.3.8",
     "langchain-unstructured>=0.1.6",
     "langgraph>=0.5.0",
-    "llmlingua>=0.2.2",
     "more-itertools>=10.7.0",
     "numpy>=2.3.1",
     "openai>=1.90.0",
     "pillow>=11.2.1",
-    "playwright>=1.53.0",
     "pydantic>=2.11.7",
     "readability-python>=0.5.0",
     "rich>=14.0.0",
@@ -32,3 +29,7 @@ dependencies = [
     "unstructured[all-docs]>=0.18.11",
     "wikipedia>=1.4.0",
 ]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
