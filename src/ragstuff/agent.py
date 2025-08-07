@@ -98,7 +98,7 @@ class PageSummaries(BaseModel):
 
 @task
 async def visit_and_summarize_url(
-    url: str, context: str, visited: set, max_depth: int, max_pages: int = 5
+    url: str, context: str, visited: set, max_depth: int
 ) -> PageSummaries:
     if url in visited or max_depth < 0:
         return PageSummaries(url=url, summaries=[])
@@ -129,14 +129,12 @@ async def visit_and_summarize_url(
     for u in result.urls_to_follow or []:
         summaries = await visit_and_summarize_url(u, context, visited, max_depth - 1)
         pages.extend(summaries.summaries)
-        if len(pages) > max_pages:
-            break
 
     return PageSummaries(url=url, summaries=pages)
 
 @task
 async def recursive_web_search(
-    query: str, context: str, visited: set, max_depth: int = 2, max_pages: int = 10
+    query: str, context: str, visited: set, max_depth: int = 3
 ) -> list[PageSummary]:
     raw_search_results = await websearch.search_web(query, num_results=10)
     search_results = "\n\n".join(
@@ -156,8 +154,6 @@ async def recursive_web_search(
     for u in result.urls_to_follow or []:
         page = await visit_and_summarize_url(u, context, visited, max_depth)
         summaries.extend(page.summaries or [])
-        if len(summaries) > max_pages:
-            break
     return summaries
 
 
@@ -183,6 +179,33 @@ async def summarize_topic(messages: list) -> str:
     )
     return summary.current_topic
 
+@task
+async def summarize_sources(query: str, topic: str, sources: list[PageSummary]) -> str:
+    content = "\n\n".join(
+        f'<summary url="{p.url}">\n{p.summary}\n</summary>' for p in sources
+    )
+    return await llm.invoke(
+        [
+            SystemMessage(
+                "Task: Condense the information contained in these summaries.\n"
+                f"Topic: {topic}\n"
+                f"Original Query: {query}\n"
+            ),
+            HumanMessage(content),
+        ]
+    )
+
+
+@task
+async def condense_sources(query: str, topic: str, sources: list[PageSummary]) -> str:
+    if len(sources) <= 10:
+        return await summarize_sources(query, topic, sources)
+    a = sources[len(sources)//2:]
+    b = sources[:len(sources)//2]
+    summary_a = await condense_sources(query, topic, a)
+    summary_b = await condense_sources(query, topic, b)
+    return f"{summary_a}\n\n{summary_b}"
+
 @tool
 async def search_web(query: str, state: Annotated[dict, InjectedState]) -> str:
     """Searches the web for the given query, recursively visits pages, and returns relevant information."""
@@ -190,9 +213,11 @@ async def search_web(query: str, state: Annotated[dict, InjectedState]) -> str:
     pages = await recursive_web_search(query, context, state["visited_urls"])
     if not pages:
         return ""
-    return "\n\n".join(
-        f'<summary url="{p.url}">\n{p.summary}\n</summary>' for p in pages
-    )
+    if len(pages) <= 10:
+        return "\n\n".join(
+            f'<summary url="{p.url}">\n{p.summary}\n</summary>' for p in pages
+        )
+    return await condense_sources(query, context, pages)
 
 llm_with_tools = llm.bind_tools(tools=[search_web])
 tool_node = ToolNode(tools=[search_web])
