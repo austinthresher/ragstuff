@@ -27,7 +27,8 @@ from langchain.chat_models import init_chat_model
 
 
 llm = init_chat_model(
-    "google/gemini-2.5-pro",
+    "openai/gpt-4.1-nano",
+    #"google/gemini-2.5-pro",
     model_provider="openai",
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY"),
@@ -205,6 +206,15 @@ async def condense_sources(query: str, topic: str, sources: list[PageSummary]) -
     summary_a = await condense_sources(query, topic, a)
     summary_b = await condense_sources(query, topic, b)
     return f"{summary_a}\n\n{summary_b}"
+
+# FIXME: Somehow I got:
+"""
+================================= Tool Message =================================
+Name: search_web
+
+Error: TypeError("object AIMessage can't be used in 'await' expression")
+ Please fix your mistakes.
+"""
 
 @tool
 async def search_web(query: str, state: Annotated[dict, InjectedState]) -> str:
